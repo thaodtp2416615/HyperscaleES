@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 # Add src to path
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from hyperscalees.models.fsmt_loader import load_fsmt_model, get_fsmt_model
 from hyperscalees.models.fsmt_analysis import FSMTParameterAnalyzer

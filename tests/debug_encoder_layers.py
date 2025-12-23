@@ -1,7 +1,8 @@
 """Debug encoder layer by layer to find where outputs diverge."""
 import sys
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import jax
 import jax.numpy as jnp
@@ -9,8 +10,8 @@ import torch
 import numpy as np
 from transformers import FSMTForConditionalGeneration, T5Tokenizer
 
-from src.hyperscalees.models.fsmt_loader import load_fsmt_model
-from src.hyperscalees.models.fsmt.forward import FSMTModel
+from hyperscalees.models.fsmt_loader import load_fsmt_model
+from hyperscalees.models.fsmt.forward import FSMTModel
 
 def compare_arrays(jax_arr, torch_arr, name):
     """Compare JAX and PyTorch arrays."""
