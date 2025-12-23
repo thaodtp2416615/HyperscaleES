@@ -95,11 +95,9 @@ class FSMTConfig:
             tgt_vocab_size=config_dict.get("tgt_vocab_size", 40963),
             unk_token_id=config_dict.get("unk_token_id", 2),
             decoder_start_token_id=config_dict.get("decoder_start_token_id", 1),
-            forced_eos_token_id=config_dict.get("forced_eos_token_id", 1
+            forced_eos_token_id=config_dict.get("forced_eos_token_id", 1),
             eos_token_id=config_dict.get("eos_token_id", 1),
             pad_token_id=config_dict.get("pad_token_id", 0),
-            decoder_start_token_id=config_dict.get("decoder_start_token_id", 1),
-            forced_eos_token_id=config_dict.get("forced_eos_token_id"),
             langs=config_dict.get("langs", ["en", "de"]),
             dropout=config_dict.get("dropout", 0.1),
             attention_dropout=config_dict.get("attention_dropout", 0.0),
