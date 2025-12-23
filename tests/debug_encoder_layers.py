@@ -1,14 +1,13 @@
 """Debug encoder layer by layer to find where outputs diverge."""
 import sys
 import os
-from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import jax
 import jax.numpy as jnp
 import torch
 import numpy as np
-from transformers import FSMTForConditionalGeneration, FSMTTokenizer
+from transformers import FSMTForConditionalGeneration, T5Tokenizer
 
 from src.hyperscalees.models.fsmt_loader import load_fsmt_model
 from src.hyperscalees.models.fsmt.forward import FSMTModel
@@ -67,16 +66,7 @@ def main():
     # Load PyTorch model
     pt_model = FSMTForConditionalGeneration.from_pretrained(model_path)
     pt_model.eval()
-    
-    # FSMT tokenizer requires explicit langs parameter
-    # Load from config to get src_lang and tgt_lang
-    from transformers import FSMTConfig
-    fsmt_config = FSMTConfig.from_pretrained(model_path)
-    pt_tokenizer = FSMTTokenizer.from_pretrained(
-        model_path, 
-        src_lang=fsmt_config.src_lang,
-        tgt_lang=fsmt_config.tgt_lang
-    )
+    pt_tokenizer = T5Tokenizer.from_pretrained(model_path)
     
     # Test input
     text = "Hello world"
@@ -262,6 +252,55 @@ def main():
         pt_ln2 = pt_model.model.encoder.layers[0].final_layer_norm(pt_residual)
     
     compare_arrays(jax_ln2, pt_ln2, "Layer norm (before FFN)")
+    
+    print("\n" + "="*80)
+    print("STEP 11: Check FFN (Feed-Forward Network)")
+    print("="*80)
+    
+    # JAX FFN
+    fc1_weight = layer_0['fc1']['weight']
+    fc1_bias = layer_0['fc1']['bias']
+    fc2_weight = layer_0['fc2']['weight']
+    fc2_bias = layer_0['fc2']['bias']
+    
+    jax_fc1 = jnp.matmul(jax_ln2, fc1_weight.T) + fc1_bias
+    jax_fc1_act = jax.nn.gelu(jax_fc1)
+    jax_fc2 = jnp.matmul(jax_fc1_act, fc2_weight.T) + fc2_bias
+    
+    # PyTorch FFN
+    with torch.no_grad():
+        pt_fc1 = pt_model.model.encoder.layers[0].fc1(pt_ln2)
+        pt_fc1_act = torch.nn.functional.gelu(pt_fc1)
+        pt_fc2 = pt_model.model.encoder.layers[0].fc2(pt_fc1_act)
+    
+    compare_arrays(jax_fc1, pt_fc1, "FC1 (before activation)")
+    compare_arrays(jax_fc1_act, pt_fc1_act, "FC1 (after GELU)")
+    compare_arrays(jax_fc2, pt_fc2, "FC2 output")
+    
+    print("\n" + "="*80)
+    print("STEP 12: Check final residual (complete layer 0)")
+    print("="*80)
+    
+    # JAX
+    jax_layer0_out = jax_residual + jax_fc2
+    
+    # PyTorch
+    pt_layer0_out = pt_residual + pt_fc2
+    
+    compare_arrays(jax_layer0_out, pt_layer0_out, "Complete Layer 0 output")
+    
+    print("\n" + "="*80)
+    print("STEP 13: Run full encoder and compare")
+    print("="*80)
+    
+    # JAX full encoder
+    jax_encoder_out = jax_model.encode(input_ids, params)
+    
+    # PyTorch full encoder
+    with torch.no_grad():
+        pt_encoder_out = pt_model.model.encoder(pt_inputs['input_ids']).last_hidden_state
+    
+    compare_arrays(jax_encoder_out, pt_encoder_out, "Full Encoder output (all 8 layers)")
     
     print("\n" + "="*80)
     print("Debugging Complete")

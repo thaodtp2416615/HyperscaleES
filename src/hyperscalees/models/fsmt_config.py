@@ -54,6 +54,9 @@ class FSMTConfig:
     # Activation
     activation_function: str = "gelu"
     
+    # Layer normalization
+    layer_norm_eps: float = 1e-5
+    
     # Generation
     max_length: int = 200
     num_beams: Optional[int] = None
