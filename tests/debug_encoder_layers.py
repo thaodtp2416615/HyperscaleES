@@ -1,7 +1,8 @@
 """Debug encoder layer by layer to find where outputs diverge."""
 import sys
 import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import jax
 import jax.numpy as jnp
@@ -66,7 +67,16 @@ def main():
     # Load PyTorch model
     pt_model = FSMTForConditionalGeneration.from_pretrained(model_path)
     pt_model.eval()
-    pt_tokenizer = FSMTTokenizer.from_pretrained(model_path)
+    
+    # FSMT tokenizer requires explicit langs parameter
+    # Load from config to get src_lang and tgt_lang
+    from transformers import FSMTConfig
+    fsmt_config = FSMTConfig.from_pretrained(model_path)
+    pt_tokenizer = FSMTTokenizer.from_pretrained(
+        model_path, 
+        src_lang=fsmt_config.src_lang,
+        tgt_lang=fsmt_config.tgt_lang
+    )
     
     # Test input
     text = "Hello world"
