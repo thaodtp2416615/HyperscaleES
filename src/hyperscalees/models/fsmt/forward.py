@@ -391,8 +391,8 @@ class FSMTModel:
         """
         batch_size, tgt_len = decoder_input_ids.shape
         
-        # Embedding
-        embeddings = params['decoder']['embed_tokens']['weight'][decoder_input_ids]
+        # Embedding (tied with encoder - decoder uses encoder's embed_tokens)
+        embeddings = params['encoder']['embed_tokens']['weight'][decoder_input_ids]
         
         # Scale embeddings
         if config.scale_embedding:
@@ -436,8 +436,8 @@ class FSMTModel:
                 layer_rng
             )
         
-        # Project to vocabulary
-        logits = jnp.matmul(x, params['decoder']['embed_tokens']['weight'].T)
+        # Project to vocabulary (tied embeddings - use encoder's embed_tokens)
+        logits = jnp.matmul(x, params['encoder']['embed_tokens']['weight'].T)
         
         return logits
     

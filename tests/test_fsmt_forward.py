@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 
 # Add src to path
-sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import jax
 import jax.numpy as jnp
