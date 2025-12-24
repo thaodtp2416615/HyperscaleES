@@ -178,14 +178,27 @@ def compare_decoder_step():
     print(f"JAX logits[0, 0, :10]: {jax_logits[0, 0, :10]}")
     print(f"JAX predicted token: {np.argmax(jax_logits[0, 0])}")
     
-    # PyTorch decoder
+    # PyTorch decoder - use generate-like approach
     with torch.no_grad():
         torch_decoder_input = torch.tensor(decoder_input_ids)
+        
+        # Create masks
+        src_len = torch_encoder_output.shape[1]
+        encoder_padding_mask = torch.zeros(1, src_len, dtype=torch.bool)
+        decoder_padding_mask = torch.zeros(1, 1, dtype=torch.bool)
+        
+        # Create causal mask
+        tgt_len = 1
+        causal_mask = torch.triu(torch.ones(tgt_len, tgt_len) * float('-inf'), diagonal=1)
+        
         torch_decoder_output = torch_model.model.decoder(
             torch_decoder_input,
-            encoder_hidden_states=torch_encoder_output
+            encoder_hidden_states=torch_encoder_output,
+            encoder_padding_mask=encoder_padding_mask,
+            decoder_padding_mask=decoder_padding_mask,
+            decoder_causal_mask=causal_mask
         )
-        torch_logits = torch_model.lm_head(torch_decoder_output.last_hidden_state)
+        torch_logits = torch_model.lm_head(torch_decoder_output[0])
         torch_logits = torch_logits.cpu().numpy()
     
     print(f"\nPyTorch decoder logits shape: {torch_logits.shape}")
