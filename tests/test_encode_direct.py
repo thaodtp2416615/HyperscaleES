@@ -54,9 +54,8 @@ if config.scale_embedding:
     manual_token_embeds = manual_token_embeds * embed_scale
     print(f"Embedding scale: {embed_scale}")
 
-# Use correct method (advanced indexing)
-positions = jnp.arange(seq_len)[None, :]
-manual_pos_embeds = pos_weight[positions]
+# CRITICAL: Use input_ids for position embeddings (like PyTorch)
+manual_pos_embeds = pos_weight[input_ids]
 manual_embeds = manual_token_embeds + manual_pos_embeds
 
 print(f"Manual embeddings (first token, first 5): {manual_embeds[0, 0, :5]}")

@@ -27,8 +27,8 @@ print("="*80)
 with torch.no_grad():
     # Embeddings
     x = pt_model.model.encoder.embed_tokens(inputs['input_ids']) * pt_model.model.encoder.embed_scale
-    positions = torch.arange(inputs['input_ids'].shape[1]).unsqueeze(0)
-    pos_embeds = pt_model.model.encoder.embed_positions(positions)
+    # CRITICAL: PyTorch uses input_ids for position embeddings, not arange!
+    pos_embeds = pt_model.model.encoder.embed_positions(inputs['input_ids'])
     x = x + pos_embeds
     
     print(f"After embeddings: {x[0, 0, :5].numpy()}")
