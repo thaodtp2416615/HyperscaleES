@@ -351,6 +351,13 @@ class FSMTModel:
         pos_embeddings = params['encoder']['embed_positions']['weight'][positions]  # [1, seq_len, d_model]
         x = embeddings + pos_embeddings
         
+        # DEBUG: Print to verify
+        print(f"[DEBUG encode()] embeddings shape: {embeddings.shape}")
+        print(f"[DEBUG encode()] embeddings[0,0,:5]: {embeddings[0, 0, :5]}")
+        print(f"[DEBUG encode()] pos_embeddings shape: {pos_embeddings.shape}")
+        print(f"[DEBUG encode()] x (combined) shape: {x.shape}")
+        print(f"[DEBUG encode()] x[0,0,:5]: {x[0, 0, :5]}")
+        
         # Prepare attention mask
         if attention_mask is not None:
             # Convert to [batch, 1, 1, seq_len] for broadcasting
