@@ -126,7 +126,7 @@ def main():
     compare_arrays(jax_x, pt_x, "Manual layer-by-layer")
     
     # Full encoder (JAX)
-    jax_full = FSMTModel.encode(config, input_ids, params)
+    jax_full = FSMTModel.encode(input_ids, params, config)
     
     # Full encoder (PyTorch)
     with torch.no_grad():
