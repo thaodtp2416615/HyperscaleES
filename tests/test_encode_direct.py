@@ -2,6 +2,11 @@
 import sys
 import os
 from pathlib import Path
+
+# Force fresh import
+if 'hyperscalees.models.fsmt.forward' in sys.modules:
+    del sys.modules['hyperscalees.models.fsmt.forward']
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import jax.numpy as jnp
@@ -49,7 +54,9 @@ if config.scale_embedding:
     manual_token_embeds = manual_token_embeds * embed_scale
     print(f"Embedding scale: {embed_scale}")
 
-manual_pos_embeds = pos_weight[:seq_len]
+# Use correct method (advanced indexing)
+positions = jnp.arange(seq_len)[None, :]
+manual_pos_embeds = pos_weight[positions]
 manual_embeds = manual_token_embeds + manual_pos_embeds
 
 print(f"Manual embeddings (first token, first 5): {manual_embeds[0, 0, :5]}")
