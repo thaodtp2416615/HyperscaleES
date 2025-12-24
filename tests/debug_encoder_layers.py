@@ -62,7 +62,7 @@ def main():
     
     # Load JAX model
     config, params, scan_map, es_map, tokenizer = load_fsmt_model(model_path)
-    jax_model = FSMTModel(config)
+    # FSMTModel has only static methods, no need to instantiate
     
     # Load PyTorch model
     pt_model = FSMTForConditionalGeneration.from_pretrained(model_path)
@@ -265,7 +265,7 @@ def main():
     fc2_bias = layer_0['fc2']['bias']
     
     jax_fc1 = jnp.matmul(jax_ln2, fc1_weight.T) + fc1_bias
-    jax_fc1_act = jax.nn.gelu(jax_fc1)
+    jax_fc1_act = jax.nn.gelu(jax_fc1, approximate=False)
     jax_fc2 = jnp.matmul(jax_fc1_act, fc2_weight.T) + fc2_bias
     
     # PyTorch FFN
@@ -295,7 +295,7 @@ def main():
     print("="*80)
     
     # JAX full encoder
-    jax_encoder_out = jax_model.encode(input_ids, params)
+    jax_encoder_out = FSMTModel.encode(input_ids, params, config)
     
     # PyTorch full encoder
     with torch.no_grad():

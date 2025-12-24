@@ -180,9 +180,10 @@ class FSMTModel:
         
         # Activation
         if activation_fn == 'gelu':
-            hidden = jax.nn.gelu(hidden)
+            # Use exact GELU (not approximate) to match PyTorch FSMT
+            hidden = jax.nn.gelu(hidden, approximate=False)
         elif activation_fn == 'relu':
-            hidden = jax.nn.relu(hidden)
+            hidden = jax.nn.relu(hidden, approximate=False)
         else:
             raise ValueError(f"Unknown activation: {activation_fn}")
         
