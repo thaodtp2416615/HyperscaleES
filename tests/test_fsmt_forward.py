@@ -139,8 +139,8 @@ def test_generation():
         print(f"\n Source text: '{source_text}'")
         
         # Tokenize
-        input_ids = tokenizer.encode(source_text, return_tensors='np')
-        input_ids = jnp.array(input_ids)
+        input_ids = tokenizer.encode(source_text, return_tensors='pt')
+        input_ids = jnp.array(input_ids.numpy())
         
         print(f"  Tokenized: {input_ids.shape}")
         print(f"  Tokens: {input_ids[0, :10]}...")
