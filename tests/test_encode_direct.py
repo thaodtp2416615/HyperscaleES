@@ -38,6 +38,22 @@ print("\n" + "="*80)
 print("Calling FSMTModel.encode()...")
 print("="*80)
 
+# First, manually check what embeddings encode() produces
+embed_weight = params['encoder']['embed_tokens']['weight']
+pos_weight = params['encoder']['embed_positions']['weight']
+seq_len = input_ids.shape[1]
+
+manual_token_embeds = embed_weight[input_ids]
+if config.scale_embedding:
+    embed_scale = jnp.sqrt(float(config.d_model))
+    manual_token_embeds = manual_token_embeds * embed_scale
+    print(f"Embedding scale: {embed_scale}")
+
+manual_pos_embeds = pos_weight[:seq_len]
+manual_embeds = manual_token_embeds + manual_pos_embeds
+
+print(f"Manual embeddings (first token, first 5): {manual_embeds[0, 0, :5]}")
+
 jax_output = FSMTModel.encode(
     input_ids=input_ids,
     params=params,
