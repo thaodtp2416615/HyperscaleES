@@ -49,17 +49,20 @@ print("="*60)
 
 # Decoder input: [BOS] = [1]
 decoder_input = jnp.array([[1]], dtype=jnp.int32)
+pt_decoder_input = torch.tensor([[1]])
 
 jax_decoder_logits = FSMTModel.decode(
     decoder_input, jax_encoder_out, params, config
 )
 
 with torch.no_grad():
-    pt_decoder_out = pt_model.model.decoder(
-        input_ids=torch.tensor([[1]]),
-        encoder_hidden_states=pt_encoder_out
+    # Use the full model forward with decoder_input_ids
+    pt_outputs = pt_model(
+        input_ids=pt_inputs['input_ids'],
+        decoder_input_ids=pt_decoder_input,
+        return_dict=True
     )
-    pt_decoder_logits = pt_model.lm_head(pt_decoder_out.last_hidden_state)
+    pt_decoder_logits = pt_outputs.logits
 
 print(f"JAX decoder logits shape: {jax_decoder_logits.shape}")
 print(f"PT decoder logits shape: {pt_decoder_logits.shape}")
@@ -89,11 +92,3 @@ else:
     print("\n--- Detailed comparison ---")
     print(f"JAX logits[0,0,:10]: {jax_decoder_logits[0, 0, :10]}")
     print(f"PT logits[0,0,:10]: {pt_decoder_logits[0, 0, :10].numpy()}")
-    
-    # Check decoder hidden states
-    with torch.no_grad():
-        pt_dec_hidden = pt_decoder_out.last_hidden_state
-    print(f"\nPT decoder hidden[0,0,:5]: {pt_dec_hidden[0, 0, :5].numpy()}")
-    
-    # Check JAX decoder hidden (before lm_head)
-    # We need to trace through decode() to get hidden states
