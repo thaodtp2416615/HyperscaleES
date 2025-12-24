@@ -86,23 +86,29 @@ def main():
     print("STEP 1: Check embeddings")
     print("="*80)
     
-    # JAX embeddings
+    # JAX embeddings (with scaling like PyTorch forward())
     embed_weight = params['encoder']['embed_tokens']['weight']
     pos_weight = params['encoder']['embed_positions']['weight']
     
     jax_token_embeds = embed_weight[input_ids]  # [batch, seq, d_model]
+    # Scale embeddings by sqrt(d_model) to match PyTorch encoder.forward()
+    if config.scale_embedding:
+        embed_scale = jnp.sqrt(float(config.d_model))
+        jax_token_embeds = jax_token_embeds * embed_scale
+    
     positions = jnp.arange(seq_len)[None, :]  # [1, seq]
     jax_pos_embeds = pos_weight[positions]  # [1, seq, d_model]
     jax_embeds = jax_token_embeds + jax_pos_embeds
     
-    # PyTorch embeddings
+    # PyTorch embeddings (using forward() which scales)
     with torch.no_grad():
-        pt_token_embeds = pt_model.model.encoder.embed_tokens(pt_inputs['input_ids'])
+        # Use encoder.forward() embeddings path (which includes scaling)
+        pt_token_embeds = pt_model.model.encoder.embed_tokens(pt_inputs['input_ids']) * pt_model.model.encoder.embed_scale
         positions_pt = torch.arange(seq_len).unsqueeze(0)
         pt_pos_embeds = pt_model.model.encoder.embed_positions(positions_pt)
         pt_embeds = pt_token_embeds + pt_pos_embeds
     
-    compare_arrays(jax_embeds, pt_embeds, "Token + Position Embeddings")
+    compare_arrays(jax_embeds, pt_embeds, "Token + Position Embeddings (SCALED)")
     
     print("\n" + "="*80)
     print("STEP 2: Check LayerNorm (first layer)")
