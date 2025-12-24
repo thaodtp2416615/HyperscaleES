@@ -346,7 +346,9 @@ class FSMTModel:
             embeddings = embeddings * embed_scale
         
         # Add positional embeddings
-        pos_embeddings = params['encoder']['embed_positions']['weight'][:seq_len]
+        # Use advanced indexing to get proper shape [batch, seq_len, d_model]
+        positions = jnp.arange(seq_len)[None, :]  # [1, seq_len]
+        pos_embeddings = params['encoder']['embed_positions']['weight'][positions]  # [1, seq_len, d_model]
         x = embeddings + pos_embeddings
         
         # Prepare attention mask
@@ -408,7 +410,9 @@ class FSMTModel:
             embeddings = embeddings * jnp.sqrt(config.d_model)
         
         # Add positional embeddings
-        pos_embeddings = params['decoder']['embed_positions']['weight'][:tgt_len]
+        # Use advanced indexing to get proper shape [batch, tgt_len, d_model]
+        positions = jnp.arange(tgt_len)[None, :]  # [1, tgt_len]
+        pos_embeddings = params['decoder']['embed_positions']['weight'][positions]  # [1, tgt_len, d_model]
         x = embeddings + pos_embeddings
         
         # Prepare causal mask for self-attention
