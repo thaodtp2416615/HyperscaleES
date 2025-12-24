@@ -203,6 +203,7 @@ class FSMTModel:
     ) -> jnp.ndarray:
         """
         Single encoder layer (self-attention + FFN)
+        Uses Pre-Norm architecture: Norm -> Attention -> Add -> Norm -> FFN -> Add
         
         Args:
             x: Input [batch, seq_len, d_model]
@@ -215,9 +216,13 @@ class FSMTModel:
         Returns:
             Output [batch, seq_len, d_model]
         """
+        # Pre-Norm: Normalize before self-attention
+        residual = x
+        x_normed = FSMTModel.layer_norm(x, params['self_attn_layer_norm']['weight'], params['self_attn_layer_norm']['bias'], config.layer_norm_eps)
+        
         # Self-attention
         attn_output = FSMTModel.multi_head_attention(
-            x, x, x,
+            x_normed, x_normed, x_normed,
             params['self_attn'],
             config.encoder_attention_heads,
             mask,
@@ -226,16 +231,18 @@ class FSMTModel:
             rng
         )
         
-        # Add & Norm
-        x = x + attn_output
-        x = FSMTModel.layer_norm(x, params['self_attn_layer_norm']['weight'], params['self_attn_layer_norm']['bias'])
+        # Add residual
+        x = residual + attn_output
+        
+        # Pre-Norm: Normalize before feed-forward
+        residual = x
+        x_normed = FSMTModel.layer_norm(x, params['final_layer_norm']['weight'], params['final_layer_norm']['bias'], config.layer_norm_eps)
         
         # Feed-forward
-        ffn_output = FSMTModel.feed_forward(x, params, config.activation_function)
+        ffn_output = FSMTModel.feed_forward(x_normed, params, config.activation_function)
         
-        # Add & Norm
-        x = x + ffn_output
-        x = FSMTModel.layer_norm(x, params['final_layer_norm']['weight'], params['final_layer_norm']['bias'])
+        # Add residual
+        x = residual + ffn_output
         
         return x
     
@@ -252,6 +259,7 @@ class FSMTModel:
     ) -> jnp.ndarray:
         """
         Single decoder layer (self-attention + cross-attention + FFN)
+        Uses Pre-Norm architecture: Norm -> Attention -> Add for each sublayer
         
         Args:
             x: Decoder input [batch, tgt_len, d_model]
@@ -266,9 +274,13 @@ class FSMTModel:
         Returns:
             Output [batch, tgt_len, d_model]
         """
+        # Pre-Norm: Normalize before self-attention
+        residual = x
+        x_normed = FSMTModel.layer_norm(x, params['self_attn_layer_norm']['weight'], params['self_attn_layer_norm']['bias'], config.layer_norm_eps)
+        
         # Self-attention (masked/causal)
         self_attn_output = FSMTModel.multi_head_attention(
-            x, x, x,
+            x_normed, x_normed, x_normed,
             params['self_attn'],
             config.decoder_attention_heads,
             self_attn_mask,
@@ -277,13 +289,16 @@ class FSMTModel:
             rng
         )
         
-        # Add & Norm
-        x = x + self_attn_output
-        x = FSMTModel.layer_norm(x, params['self_attn_layer_norm']['weight'], params['self_attn_layer_norm']['bias'])
+        # Add residual
+        x = residual + self_attn_output
+        
+        # Pre-Norm: Normalize before cross-attention
+        residual = x
+        x_normed = FSMTModel.layer_norm(x, params['encoder_attn_layer_norm']['weight'], params['encoder_attn_layer_norm']['bias'], config.layer_norm_eps)
         
         # Cross-attention (encoder-decoder)
         cross_attn_output = FSMTModel.multi_head_attention(
-            x, encoder_output, encoder_output,
+            x_normed, encoder_output, encoder_output,
             params['encoder_attn'],
             config.decoder_attention_heads,
             cross_attn_mask,
@@ -292,16 +307,18 @@ class FSMTModel:
             rng
         )
         
-        # Add & Norm
-        x = x + cross_attn_output
-        x = FSMTModel.layer_norm(x, params['encoder_attn_layer_norm']['weight'], params['encoder_attn_layer_norm']['bias'])
+        # Add residual
+        x = residual + cross_attn_output
+        
+        # Pre-Norm: Normalize before feed-forward
+        residual = x
+        x_normed = FSMTModel.layer_norm(x, params['final_layer_norm']['weight'], params['final_layer_norm']['bias'], config.layer_norm_eps)
         
         # Feed-forward
-        ffn_output = FSMTModel.feed_forward(x, params, config.activation_function)
+        ffn_output = FSMTModel.feed_forward(x_normed, params, config.activation_function)
         
-        # Add & Norm
-        x = x + ffn_output
-        x = FSMTModel.layer_norm(x, params['final_layer_norm']['weight'], params['final_layer_norm']['bias'])
+        # Add residual
+        x = residual + ffn_output
         
         return x
     
