@@ -81,6 +81,11 @@ def main():
     print("="*80)
     compare_arrays(jax_x, pt_x, "Scaled embeddings")
     
+    # PyTorch encoder transposes to [T, B, C] before layers
+    print("\nNote: PyTorch encoder transposes to [T, B, C] for layers")
+    pt_x = pt_x.transpose(0, 1)  # [B, T, C] -> [T, B, C]
+    print(f"PyTorch shape after transpose: {pt_x.shape} (should be [T, B, C])")
+    
     # Process layer by layer
     for i in range(config.encoder_layers):
         print(f"\n" + "="*80)
@@ -115,6 +120,10 @@ def main():
     print("\n" + "="*80)
     print("Final comparison")
     print("="*80)
+    
+    # Transpose PyTorch back to [B, T, C]
+    pt_x = pt_x.transpose(0, 1)  # [T, B, C] -> [B, T, C]
+    compare_arrays(jax_x, pt_x, "Manual layer-by-layer")
     
     # Full encoder (JAX)
     jax_full = FSMTModel.encode(config, input_ids, params)
