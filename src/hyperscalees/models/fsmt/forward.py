@@ -333,9 +333,8 @@ class FSMTModel:
         # Embedding
         embeddings = params['encoder']['embed_tokens']['weight'][input_ids]
         
-        # Scale embeddings (like FSMT)
-        if config.scale_embedding:
-            embeddings = embeddings * jnp.sqrt(config.d_model)
+        # Note: PyTorch FSMT does NOT actually scale embeddings despite config.scale_embedding=True
+        # So we don't scale here to match PyTorch behavior
         
         # Add positional embeddings
         pos_embeddings = params['encoder']['embed_positions']['weight'][:seq_len]
