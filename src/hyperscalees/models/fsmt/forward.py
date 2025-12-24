@@ -346,17 +346,10 @@ class FSMTModel:
             embeddings = embeddings * embed_scale
         
         # Add positional embeddings
-        # Use advanced indexing to get proper shape [batch, seq_len, d_model]
-        positions = jnp.arange(seq_len)[None, :]  # [1, seq_len]
-        pos_embeddings = params['encoder']['embed_positions']['weight'][positions]  # [1, seq_len, d_model]
+        # CRITICAL: PyTorch FSMT uses input_ids for position embeddings (SinusoidalPositionalEmbedding behavior)
+        # NOT arange(seq_len), because it handles padding_idx internally
+        pos_embeddings = params['encoder']['embed_positions']['weight'][input_ids]  # [batch, seq_len, d_model]
         x = embeddings + pos_embeddings
-        
-        # DEBUG: Print to verify
-        print(f"[DEBUG encode()] embeddings shape: {embeddings.shape}")
-        print(f"[DEBUG encode()] embeddings[0,0,:5]: {embeddings[0, 0, :5]}")
-        print(f"[DEBUG encode()] pos_embeddings shape: {pos_embeddings.shape}")
-        print(f"[DEBUG encode()] x (combined) shape: {x.shape}")
-        print(f"[DEBUG encode()] x[0,0,:5]: {x[0, 0, :5]}")
         
         # Prepare attention mask
         if attention_mask is not None:
@@ -417,9 +410,8 @@ class FSMTModel:
             embeddings = embeddings * jnp.sqrt(config.d_model)
         
         # Add positional embeddings
-        # Use advanced indexing to get proper shape [batch, tgt_len, d_model]
-        positions = jnp.arange(tgt_len)[None, :]  # [1, tgt_len]
-        pos_embeddings = params['decoder']['embed_positions']['weight'][positions]  # [1, tgt_len, d_model]
+        # CRITICAL: Use decoder_input_ids for position indexing (same as PyTorch)
+        pos_embeddings = params['decoder']['embed_positions']['weight'][decoder_input_ids]  # [batch, tgt_len, d_model]
         x = embeddings + pos_embeddings
         
         # Prepare causal mask for self-attention
