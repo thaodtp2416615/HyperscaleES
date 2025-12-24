@@ -33,7 +33,7 @@ with torch.no_grad():
     # Process through layers
     for i, layer in enumerate(encoder.layers):
         x_before = x.clone()
-        x = layer(x)[0]  # layer returns (output, None)
+        x = layer(x, encoder_padding_mask=None, layer_head_mask=None)[0]  # layer returns (output, None)
         print(f"After layer {i}: {x[0, 0, :5]}")
         print(f"  Change from previous: {(x - x_before).abs().max():.6f}")
     
