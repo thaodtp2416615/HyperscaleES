@@ -203,7 +203,7 @@ class FSMTModel:
     ) -> jnp.ndarray:
         """
         Single encoder layer (self-attention + FFN)
-        Uses Pre-Norm architecture: Norm -> Attention -> Add -> Norm -> FFN -> Add
+        Uses Post-Norm architecture: Attention -> Add -> Norm (matches PyTorch FSMT)
         
         Args:
             x: Input [batch, seq_len, d_model]
@@ -216,13 +216,10 @@ class FSMTModel:
         Returns:
             Output [batch, seq_len, d_model]
         """
-        # Pre-Norm: Normalize before self-attention
-        residual = x
-        x_normed = FSMTModel.layer_norm(x, params['self_attn_layer_norm']['weight'], params['self_attn_layer_norm']['bias'], config.layer_norm_eps)
-        
         # Self-attention
+        residual = x
         attn_output = FSMTModel.multi_head_attention(
-            x_normed, x_normed, x_normed,
+            x, x, x,
             params['self_attn'],
             config.encoder_attention_heads,
             mask,
@@ -231,18 +228,17 @@ class FSMTModel:
             rng
         )
         
-        # Add residual
+        # Add & Norm (Post-Norm)
         x = residual + attn_output
-        
-        # Pre-Norm: Normalize before feed-forward
-        residual = x
-        x_normed = FSMTModel.layer_norm(x, params['final_layer_norm']['weight'], params['final_layer_norm']['bias'], config.layer_norm_eps)
+        x = FSMTModel.layer_norm(x, params['self_attn_layer_norm']['weight'], params['self_attn_layer_norm']['bias'], config.layer_norm_eps)
         
         # Feed-forward
-        ffn_output = FSMTModel.feed_forward(x_normed, params, config.activation_function)
+        residual = x
+        ffn_output = FSMTModel.feed_forward(x, params, config.activation_function)
         
-        # Add residual
+        # Add & Norm (Post-Norm)
         x = residual + ffn_output
+        x = FSMTModel.layer_norm(x, params['final_layer_norm']['weight'], params['final_layer_norm']['bias'], config.layer_norm_eps)
         
         return x
     
@@ -259,7 +255,7 @@ class FSMTModel:
     ) -> jnp.ndarray:
         """
         Single decoder layer (self-attention + cross-attention + FFN)
-        Uses Pre-Norm architecture: Norm -> Attention -> Add for each sublayer
+        Uses Post-Norm architecture: Attention -> Add -> Norm (matches PyTorch FSMT)
         
         Args:
             x: Decoder input [batch, tgt_len, d_model]
@@ -274,13 +270,10 @@ class FSMTModel:
         Returns:
             Output [batch, tgt_len, d_model]
         """
-        # Pre-Norm: Normalize before self-attention
-        residual = x
-        x_normed = FSMTModel.layer_norm(x, params['self_attn_layer_norm']['weight'], params['self_attn_layer_norm']['bias'], config.layer_norm_eps)
-        
         # Self-attention (masked/causal)
+        residual = x
         self_attn_output = FSMTModel.multi_head_attention(
-            x_normed, x_normed, x_normed,
+            x, x, x,
             params['self_attn'],
             config.decoder_attention_heads,
             self_attn_mask,
@@ -289,16 +282,14 @@ class FSMTModel:
             rng
         )
         
-        # Add residual
+        # Add & Norm (Post-Norm)
         x = residual + self_attn_output
-        
-        # Pre-Norm: Normalize before cross-attention
-        residual = x
-        x_normed = FSMTModel.layer_norm(x, params['encoder_attn_layer_norm']['weight'], params['encoder_attn_layer_norm']['bias'], config.layer_norm_eps)
+        x = FSMTModel.layer_norm(x, params['self_attn_layer_norm']['weight'], params['self_attn_layer_norm']['bias'], config.layer_norm_eps)
         
         # Cross-attention (encoder-decoder)
+        residual = x
         cross_attn_output = FSMTModel.multi_head_attention(
-            x_normed, encoder_output, encoder_output,
+            x, encoder_output, encoder_output,
             params['encoder_attn'],
             config.decoder_attention_heads,
             cross_attn_mask,
@@ -307,18 +298,17 @@ class FSMTModel:
             rng
         )
         
-        # Add residual
+        # Add & Norm (Post-Norm)
         x = residual + cross_attn_output
-        
-        # Pre-Norm: Normalize before feed-forward
-        residual = x
-        x_normed = FSMTModel.layer_norm(x, params['final_layer_norm']['weight'], params['final_layer_norm']['bias'], config.layer_norm_eps)
+        x = FSMTModel.layer_norm(x, params['encoder_attn_layer_norm']['weight'], params['encoder_attn_layer_norm']['bias'], config.layer_norm_eps)
         
         # Feed-forward
-        ffn_output = FSMTModel.feed_forward(x_normed, params, config.activation_function)
+        residual = x
+        ffn_output = FSMTModel.feed_forward(x, params, config.activation_function)
         
-        # Add residual
+        # Add & Norm (Post-Norm)
         x = residual + ffn_output
+        x = FSMTModel.layer_norm(x, params['final_layer_norm']['weight'], params['final_layer_norm']['bias'], config.layer_norm_eps)
         
         return x
     
@@ -350,8 +340,10 @@ class FSMTModel:
         # Embedding
         embeddings = params['encoder']['embed_tokens']['weight'][input_ids]
         
-        # Note: PyTorch FSMT does NOT actually scale embeddings despite config.scale_embedding=True
-        # So we don't scale here to match PyTorch behavior
+        # Scale embeddings by sqrt(d_model) if enabled (PyTorch FSMT does this)
+        if config.scale_embedding:
+            embed_scale = jnp.sqrt(float(config.d_model))
+            embeddings = embeddings * embed_scale
         
         # Add positional embeddings
         pos_embeddings = params['encoder']['embed_positions']['weight'][:seq_len]
