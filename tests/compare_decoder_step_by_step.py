@@ -68,12 +68,11 @@ print(f"JAX predicted token: {jax_next_token} → '{tokenizer.decode([int(jax_ne
 
 # PyTorch decode
 with torch.no_grad():
-    # Use full forward pass (handles masks internally)
-    pt_outputs = pt_model(
-        input_ids=pt_inputs['input_ids'],
-        decoder_input_ids=torch.tensor([[1]])
+    pt_decoder_output = pt_model.model.decoder(
+        input_ids=torch.tensor([[1]]),
+        encoder_hidden_states=pt_encoder_output
     )
-    pt_logits = pt_outputs.logits
+    pt_logits = pt_model.lm_head(pt_decoder_output.last_hidden_state)
     
 print(f"PyTorch logits shape: {pt_logits.shape}")
 print(f"PyTorch logits[0, 0, :10]: {pt_logits[0, 0, :10].numpy()}")
@@ -107,11 +106,11 @@ if jax_next_token == pt_next_token.item():
     
     # PyTorch
     with torch.no_grad():
-        pt_outputs = pt_model(
-            input_ids=pt_inputs['input_ids'],
-            decoder_input_ids=torch.tensor([[1, int(jax_next_token)]])
+        pt_decoder_output = pt_model.model.decoder(
+            input_ids=torch.tensor([[1, int(jax_next_token)]]),
+            encoder_hidden_states=pt_encoder_output
         )
-        pt_logits = pt_outputs.logits
+        pt_logits = pt_model.lm_head(pt_decoder_output.last_hidden_state)
     
     pt_next_token2 = torch.argmax(pt_logits[0, 1])
     print(f"PyTorch predicted token: {pt_next_token2.item()} → '{pt_tokenizer.decode([pt_next_token2.item()])}'")
